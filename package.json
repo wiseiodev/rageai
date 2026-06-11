@@ -19,6 +19,7 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "plugin:build": "turbo run plugin:build",
+    "env:dev": "pnpm --filter @rageai/web env:dev",
     "db:generate": "pnpm --filter @rageai/db generate",
     "db:migrate": "pnpm --filter @rageai/db migrate",
     "guardrails:plan": "pnpm dlx @wiseiodev/guardrails@latest plan --json",

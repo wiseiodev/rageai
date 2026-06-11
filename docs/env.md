@@ -1,6 +1,18 @@
 # Environment Variables
 
-Copy `.env.example` into `.env.local` for local development.
+Run this from the repo root to pull Vercel development environment variables into the web app:
+
+```bash
+pnpm env:dev
+```
+
+The script runs Vercel from the linked repo root and writes `apps/web/.env`. If the local checkout
+has not been linked to a Vercel project yet, run `vercel link` from the repo root first.
+
+For manual local setup, copy `.env.example` into `apps/web/.env`.
+
+Database scripts load `apps/web/.env` before running Drizzle commands, so `pnpm db:migrate` and
+`pnpm db:generate` use the same local development database settings.
 
 Required for the web app:
 

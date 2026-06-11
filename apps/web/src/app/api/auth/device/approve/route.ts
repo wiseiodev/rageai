@@ -14,16 +14,28 @@ const approveSchema = z.object({
     .trim()
     .min(2)
     .max(32)
-    .regex(/^[a-zA-Z0-9_-]+$/),
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .optional()
+    .or(z.literal(''))
+    .transform((value) => (value ? value : undefined)),
 })
 
-async function parseBody(request: Request) {
+async function parseBody(request: Request): Promise<{ body: unknown; isForm: boolean }> {
   const contentType = request.headers.get('content-type') ?? ''
   if (contentType.includes('application/json')) {
-    return request.json()
+    return { body: await request.json(), isForm: false }
   }
   const formData = await request.formData()
-  return Object.fromEntries(formData.entries())
+  return { body: Object.fromEntries(formData.entries()), isForm: true }
+}
+
+function redirectToDevicePage(request: Request, userCode: string, approved = false) {
+  const url = new URL('/auth/device', request.url)
+  url.searchParams.set('code', userCode)
+  if (approved) {
+    url.searchParams.set('approved', '1')
+  }
+  return Response.redirect(url, 303)
 }
 
 export async function POST(request: Request) {
@@ -32,7 +44,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, message: 'Sign in with GitHub first' }, { status: 401 })
   }
 
-  const body = approveSchema.safeParse(await parseBody(request).catch(() => null))
+  const parsedBody = await parseBody(request).catch(() => null)
+  const body = approveSchema.safeParse(parsedBody?.body)
   if (!body.success) {
     return Response.json({ ok: false, message: 'Invalid approval request' }, { status: 400 })
   }
@@ -51,25 +64,30 @@ export async function POST(request: Request) {
     .limit(1)
 
   if (!pending) {
+    if (parsedBody?.isForm) {
+      return redirectToDevicePage(request, body.data.userCode)
+    }
     return Response.json(
       { ok: false, message: 'Device code not found or expired' },
       { status: 404 },
     )
   }
 
-  await db
-    .insert(rageProfile)
-    .values({
-      userId: session.user.id,
-      handle: body.data.handle,
-    })
-    .onConflictDoUpdate({
-      target: rageProfile.userId,
-      set: {
+  if (body.data.handle) {
+    await db
+      .insert(rageProfile)
+      .values({
+        userId: session.user.id,
         handle: body.data.handle,
-        updatedAt: new Date(),
-      },
-    })
+      })
+      .onConflictDoUpdate({
+        target: rageProfile.userId,
+        set: {
+          handle: body.data.handle,
+          updatedAt: new Date(),
+        },
+      })
+  }
 
   await db
     .update(deviceAuthRequest)
@@ -79,6 +97,10 @@ export async function POST(request: Request) {
       updatedAt: new Date(),
     })
     .where(eq(deviceAuthRequest.id, pending.id))
+
+  if (parsedBody?.isForm) {
+    return redirectToDevicePage(request, body.data.userCode, true)
+  }
 
   const isAdmin = adminLogins().has(session.user.name?.toLowerCase() ?? '')
   return Response.json({

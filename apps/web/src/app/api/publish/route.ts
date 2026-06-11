@@ -4,6 +4,8 @@ import {
   type PublishBatchRequest,
   publishBatchRequestSchema,
   publishRequestSchema,
+  type ShareUrl,
+  type WindowKind,
 } from '@rageai/core'
 import { apiKey as apiKeyTable, getDb, leaderboardRow, rageProfile, submission } from '@rageai/db'
 import { and, eq } from 'drizzle-orm'
@@ -181,11 +183,35 @@ export async function POST(request: Request) {
     }
   })
 
+  const shareUrls: ShareUrl[] = []
+  const shareWindows = new Set<WindowKind>(firstPayload.windows.map((window) => window.window))
+  for (const window of shareWindows) {
+    const [row] = await db
+      .select({ id: leaderboardRow.id })
+      .from(leaderboardRow)
+      .where(
+        and(
+          eq(leaderboardRow.userId, keyRecord.userId),
+          eq(leaderboardRow.installIdHash, installIdHash),
+          eq(leaderboardRow.hostApp, firstPayload.hostApp),
+          eq(leaderboardRow.window, window),
+        ),
+      )
+      .limit(1)
+    if (row) {
+      shareUrls.push({
+        window,
+        url: `${appUrl()}/share/${row.id}`,
+      })
+    }
+  }
+
   return Response.json({
     ok: true,
     message:
       parsed.publicPayloads.length === 1 ? 'Rage score published.' : 'Rage scores published.',
     leaderboardUrl: `${appUrl()}/leaderboard`,
     published: parsed.publicPayloads.map((payload) => payload.hostApp),
+    shareUrls,
   })
 }

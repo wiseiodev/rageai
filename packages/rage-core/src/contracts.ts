@@ -50,6 +50,14 @@ export const publishResponseSchema = z.object({
   message: z.string(),
   leaderboardUrl: z.string().url().optional(),
   published: z.array(hostAppSchema).optional(),
+  shareUrls: z
+    .array(
+      z.object({
+        window: windowKindSchema,
+        url: z.string().url(),
+      }),
+    )
+    .optional(),
 })
 
 export type PublicPublishPayload = z.infer<typeof publicPublishPayloadSchema>

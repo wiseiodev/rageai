@@ -19,8 +19,8 @@
     "lint": "biome lint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"console.log('No db unit tests yet')\"",
-    "generate": "drizzle-kit generate",
-    "migrate": "tsx src/migrate.ts"
+    "generate": "node --env-file-if-exists=../../apps/web/.env node_modules/drizzle-kit/bin.cjs generate",
+    "migrate": "node --env-file-if-exists=../../apps/web/.env --import tsx src/migrate.ts"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

@@ -9,6 +9,7 @@ Rage AI is a local-first frustration leaderboard for Claude Code and Codex. It s
 - Better Auth with GitHub OAuth and API-key publish tokens
 - Neon Postgres via Drizzle ORM and `pg`
 - Upstash Redis for product rate limits
+- Copy-ready X and LinkedIn share drafts from public aggregate scores
 - Biome, Vitest, Playwright, and `@wiseiodev/guardrails`
 
 ## Development

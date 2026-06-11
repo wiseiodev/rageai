@@ -23,6 +23,12 @@ Public leaderboard payloads include:
 Public payloads do not include raw transcript text, exact matched words, transcript paths, model
 names, account IDs, GitHub usernames, or raw IP addresses.
 
+## Public Share Pages
+
+Share pages, generated card previews, and copy-ready X or LinkedIn drafts use only public aggregate
+leaderboard row fields. Rage AI does not connect to social accounts, store social credentials, or
+post on a user's behalf.
+
 ## Private Anti-Abuse Data
 
 The publish request includes a random local install ID. The server stores HMAC-derived identifiers

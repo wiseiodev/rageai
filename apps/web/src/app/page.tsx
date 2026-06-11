@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -48,6 +49,7 @@ export default async function HomePage() {
                     <Th>Host</Th>
                     <Th className="text-right">Rage/1k</Th>
                     <Th className="text-right">Words</Th>
+                    <Th className="text-right">Share</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -58,6 +60,14 @@ export default async function HomePage() {
                       <Td>{row.hostApp}</Td>
                       <Td className="text-right">{row.ratePerThousandWords}</Td>
                       <Td className="text-right">{row.userWordCount}</Td>
+                      <Td className="text-right">
+                        <Link
+                          className="text-zinc-600 underline"
+                          href={`/share/${row.id}` as Route}
+                        >
+                          Open
+                        </Link>
+                      </Td>
                     </tr>
                   ))}
                 </tbody>

@@ -19,24 +19,34 @@ export async function POST(request: Request) {
 
   const db = getDb()
   const installIdHash = hmacIdentifier(body.data.installId)
-  const [approved] = await db
+  const [requestRecord] = await db
     .select()
     .from(deviceAuthRequest)
     .where(
       and(
         eq(deviceAuthRequest.deviceCodeHash, hmacIdentifier(body.data.deviceCode)),
         eq(deviceAuthRequest.installIdHash, installIdHash),
-        eq(deviceAuthRequest.status, 'approved'),
         isNull(deviceAuthRequest.apiKeyId),
         gt(deviceAuthRequest.expiresAt, new Date()),
       ),
     )
     .limit(1)
 
-  if (!approved?.userId) {
+  if (!requestRecord) {
     return Response.json(
-      { ok: false, message: 'Device is not approved or has expired' },
+      { ok: false, message: 'Device auth request has expired or was already completed' },
       { status: 404 },
+    )
+  }
+
+  if (requestRecord.status !== 'approved' || !requestRecord.userId) {
+    return Response.json(
+      {
+        ok: false,
+        message: 'Device is waiting for browser approval',
+        status: requestRecord.status,
+      },
+      { status: 202 },
     )
   }
 
@@ -44,10 +54,10 @@ export async function POST(request: Request) {
   const apiKeyId = randomUUID()
   await db.insert(apiKeyTable).values({
     id: apiKeyId,
-    name: approved.deviceLabel,
+    name: requestRecord.deviceLabel,
     prefix: 'rage_sk',
     key: hmacIdentifier(token),
-    userId: approved.userId,
+    userId: requestRecord.userId,
     metadata: {
       installIdHash,
       scope: 'publish',
@@ -60,12 +70,12 @@ export async function POST(request: Request) {
       apiKeyId,
       updatedAt: new Date(),
     })
-    .where(eq(deviceAuthRequest.id, approved.id))
+    .where(eq(deviceAuthRequest.id, requestRecord.id))
 
   const [profile] = await db
     .select({ handle: rageProfile.handle })
     .from(rageProfile)
-    .where(eq(rageProfile.userId, approved.userId))
+    .where(eq(rageProfile.userId, requestRecord.userId))
     .limit(1)
 
   return Response.json({

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { HostApp, ScanSummary } from '@rageai/core'
+import type { HostApp, ScanSummary, ShareUrl } from '@rageai/core'
 
 export type StoredLocation = {
   hostApp: HostApp
@@ -15,6 +15,7 @@ export type RageState = {
   publishToken?: string
   pendingDeviceCode?: string
   handle?: string
+  shareUrls?: ShareUrl[]
   locations: StoredLocation[]
   lastSummary?: ScanSummary
 }

@@ -5,6 +5,11 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
+// src/index.ts
+import { spawn } from "node:child_process";
+import { platform } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
+
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -14561,7 +14566,11 @@ var publishResponseSchema = external_exports.object({
   ok: external_exports.boolean(),
   message: external_exports.string(),
   leaderboardUrl: external_exports.string().url().optional(),
-  published: external_exports.array(hostAppSchema).optional()
+  published: external_exports.array(hostAppSchema).optional(),
+  shareUrls: external_exports.array(external_exports.object({
+    window: windowKindSchema,
+    url: external_exports.string().url()
+  })).optional()
 });
 
 // ../rage-core/dist/discovery.js
@@ -14782,6 +14791,120 @@ function aggregatePublishableWindows(messages, now = /* @__PURE__ */ new Date())
     aggregateWindow(publishable, "weekly", now),
     aggregateWindow(publishable, "all_time", now)
   ];
+}
+
+// ../rage-core/dist/share.js
+function formatHostApp(hostApp) {
+  return hostApp === "claude" ? "Claude" : "Codex";
+}
+function formatWindow(window) {
+  if (window === "all_time") {
+    return "all-time";
+  }
+  return window;
+}
+function formatRate(rate) {
+  const numericRate = typeof rate === "number" ? rate : Number(rate);
+  if (!Number.isFinite(numericRate)) {
+    return String(rate);
+  }
+  return numericRate.toFixed(2).replace(/\.?0+$/u, "");
+}
+function uniqueScores(scores) {
+  const byHost = /* @__PURE__ */ new Map();
+  for (const score of scores) {
+    if (!byHost.has(score.hostApp)) {
+      byHost.set(score.hostApp, score);
+    }
+  }
+  return [...byHost.values()].sort((left, right) => left.hostApp.localeCompare(right.hostApp));
+}
+function bestScore(scores) {
+  return scores.reduce((best, score) => {
+    const bestRate = Number(best.ratePerThousandWords);
+    const scoreRate = Number(score.ratePerThousandWords);
+    return scoreRate > bestRate ? score : best;
+  }, scores[0]);
+}
+function formatScore(score) {
+  return `${formatHostApp(score.hostApp)} ${formatRate(score.ratePerThousandWords)}/1k`;
+}
+function comparisonLine(scores) {
+  return scores.map(formatScore).join(" vs ");
+}
+function createComparisonDraft(input, scores) {
+  const leader = bestScore(scores);
+  const window = formatWindow(input.window);
+  const comparison = comparisonLine(scores);
+  if (input.platform === "x") {
+    if (input.tone === "snark") {
+      return `${formatHostApp(leader.hostApp)} is leading my ${window} AI frustration derby: ${comparison}. Aggregate-only Rage AI, transcripts stay local. ${input.url}`;
+    }
+    return `${window} Claude vs Codex rage check: ${comparison}. Aggregate-only Rage AI score, transcripts stay local. ${input.url}`;
+  }
+  if (input.tone === "snark") {
+    return `My ${window} Rage AI readout has ${formatHostApp(leader.hostApp)} causing the louder keyboard sigh: ${comparison}.
+
+It is aggregate-only and local-first: no raw transcripts, no matched words, no model names.
+
+${input.url}`;
+  }
+  return `My ${window} Rage AI readout compares Claude and Codex at ${comparison}.
+
+The score is aggregate-only and local-first: no raw transcripts, no matched words, no model names.
+
+${input.url}`;
+}
+function createSingleHostDraft(input, score) {
+  const window = formatWindow(input.window);
+  const host = formatHostApp(score.hostApp);
+  const rate = formatRate(score.ratePerThousandWords);
+  const rankable = score.rankEligible ? "rankable" : "aggregate-only";
+  if (input.platform === "x") {
+    if (input.tone === "snark") {
+      return `${host} extracted ${rate} rage hits/1k words from me ${window}. ${rankable} Rage AI score, transcripts stay local. ${input.url}`;
+    }
+    return `${window} Rage AI score for ${host}: ${rate} rage hits/1k words. ${rankable}, aggregate-only, transcripts stay local. ${input.url}`;
+  }
+  if (input.tone === "snark") {
+    return `${host} delivered my ${window} Rage AI score: ${rate} rage hits per 1,000 words.
+
+The share is ${rankable} and aggregate-only. No raw transcripts, no matched words, no model names.
+
+${input.url}`;
+  }
+  return `My ${window} Rage AI score for ${host} is ${rate} rage hits per 1,000 words.
+
+This is a ${rankable}, aggregate-only share. No raw transcripts, no matched words, no model names.
+
+${input.url}`;
+}
+function fitXDraft(text, input, scores) {
+  if (text.length <= 280) {
+    return text;
+  }
+  const conciseScores = comparisonLine(scores);
+  const concise = scores.length > 1 ? `Claude vs Codex rage check: ${conciseScores}. Transcripts stay local. ${input.url}` : `Rage AI score: ${conciseScores}. Transcripts stay local. ${input.url}`;
+  if (concise.length <= 280) {
+    return concise;
+  }
+  const shortest = scores.length > 1 ? `Rage AI: ${conciseScores}. ${input.url}` : `Rage AI: ${formatScore(scores[0])}. ${input.url}`;
+  return shortest.length <= 280 ? shortest : shortest.slice(0, 279).trimEnd();
+}
+function createShareDraft(input) {
+  const scores = uniqueScores(input.scores);
+  if (scores.length === 0) {
+    throw new Error("At least one public score is required to create a share draft");
+  }
+  const text = scores.length > 1 ? createComparisonDraft(input, scores.slice(0, 2)) : createSingleHostDraft(input, scores[0]);
+  const safeText = input.platform === "x" ? fitXDraft(text, input, scores.slice(0, 2)) : text;
+  return {
+    platform: input.platform,
+    tone: input.tone,
+    text: safeText,
+    url: input.url,
+    characterCount: safeText.length
+  };
 }
 
 // ../rage-core/dist/transcripts.js
@@ -15032,7 +15155,73 @@ function flagString(flags, key) {
   const value = flags.get(key);
   return typeof value === "string" ? value : null;
 }
-function formatHostApp(hostApp) {
+function flagWindow(flags) {
+  const window = flagString(flags, "window");
+  if (window === "weekly" || window === "all_time" || window === "daily") {
+    return window;
+  }
+  return "daily";
+}
+function flagPlatform(flags) {
+  return flagString(flags, "platform") === "linkedin" ? "linkedin" : "x";
+}
+function flagTone(flags) {
+  return flagString(flags, "tone") === "snark" ? "snark" : "professional";
+}
+function openBrowserUrl(url2) {
+  const currentPlatform = platform();
+  const command = currentPlatform === "darwin" ? "open" : currentPlatform === "win32" ? "cmd" : "xdg-open";
+  const args = currentPlatform === "win32" ? ["/c", "start", "", url2] : [url2];
+  try {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore"
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function completeDeviceAuth(apiUrl, installId, deviceCode) {
+  const response = await fetch(`${apiUrl}/api/auth/device/complete`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ deviceCode, installId })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 202) {
+    return data;
+  }
+  if (!response.ok) {
+    throw new Error(data.message ?? `Device auth failed with ${response.status}`);
+  }
+  if (!data.token) {
+    throw new Error("Device auth completed without a publish token");
+  }
+  return data;
+}
+async function storeAuthToken(response) {
+  if (!response.token) {
+    throw new Error("Device auth completed without a publish token");
+  }
+  const token = response.token;
+  await updateState((current) => {
+    const { pendingDeviceCode: _pendingDeviceCode, ...rest } = current;
+    const next = {
+      ...rest,
+      publishToken: token
+    };
+    if (response.handle) {
+      return { ...next, handle: response.handle };
+    }
+    return next;
+  });
+  console.log("Publish token stored locally.");
+}
+function formatHostApp2(hostApp) {
   return hostApp === "claude" ? "Claude" : "Codex";
 }
 function formatWindowTable(windows) {
@@ -15048,7 +15237,7 @@ function formatWindowTable(windows) {
 }
 function formatHostSummary(hostSummary) {
   return [
-    `${formatHostApp(hostSummary.hostApp)}`,
+    `${formatHostApp2(hostSummary.hostApp)}`,
     `Files: ${hostSummary.filesScanned} scanned, ${hostSummary.filesSkipped} skipped`,
     `Messages: ${hostSummary.localMessages} local, ${hostSummary.publishableMessages} publishable`,
     ...formatWindowTable(hostSummary.windows)
@@ -15057,7 +15246,7 @@ function formatHostSummary(hostSummary) {
 function formatSummary(summary) {
   const lines = [
     `Generated: ${summary.generatedAt}`,
-    `Hosts: ${summary.hostApps.map(formatHostApp).join(", ") || "none"}`,
+    `Hosts: ${summary.hostApps.map(formatHostApp2).join(", ") || "none"}`,
     `Files: ${summary.filesScanned} scanned, ${summary.filesSkipped} skipped`,
     `Messages: ${summary.localMessages} local, ${summary.publishableMessages} publishable`
   ];
@@ -15311,7 +15500,73 @@ async function publish(flags) {
   if (response.leaderboardUrl) {
     console.log(response.leaderboardUrl);
   }
-  await updateState((current) => ({ ...current, handle }));
+  if (response.shareUrls && response.shareUrls.length > 0) {
+    console.log("Share drafts:");
+    for (const shareUrl of response.shareUrls) {
+      console.log(`rage share --window ${shareUrl.window} --platform x`);
+      console.log(shareUrl.url);
+    }
+  }
+  await updateState((current) => {
+    const next = { ...current, handle };
+    if (response.shareUrls) {
+      return { ...next, shareUrls: response.shareUrls };
+    }
+    return next;
+  });
+}
+function scoresForShare(summary, window) {
+  return (summary.hosts ?? []).flatMap((hostSummary) => {
+    const score = hostSummary.windows.find((candidate) => candidate.window === window);
+    if (!score) {
+      return [];
+    }
+    return [
+      {
+        hostApp: hostSummary.hostApp,
+        ratePerThousandWords: score.ratePerThousandWords,
+        userWordCount: score.userWordCount,
+        scoredProfanityCount: score.scoredProfanityCount,
+        topIntensity: score.topIntensity,
+        rankEligible: score.rankEligible
+      }
+    ];
+  });
+}
+async function share(flags) {
+  const state = await readState();
+  const window = flagWindow(flags);
+  const platform2 = flagPlatform(flags);
+  const tone = flagTone(flags);
+  if (!state.lastSummary) {
+    console.log("No local stats yet. Run `rage scan --confirm` first.");
+    return;
+  }
+  if (!state.handle) {
+    console.log("No public handle yet. Run `rage publish --handle your_handle --confirm` first.");
+    return;
+  }
+  const scores = scoresForShare(state.lastSummary, window);
+  if (scores.length === 0) {
+    console.log(`No ${window} host scores found. Run \`rage scan --confirm\` first.`);
+    return;
+  }
+  const url2 = state.shareUrls?.find((shareUrl) => shareUrl.window === window)?.url;
+  if (!url2) {
+    console.log("No score-specific share URL found yet. Using the public leaderboard URL.");
+  }
+  const draft = createShareDraft({
+    handle: state.handle,
+    platform: platform2,
+    tone,
+    window,
+    url: url2 ?? `${state.apiUrl}/leaderboard`,
+    scores
+  });
+  console.log(`${platform2 === "x" ? "X" : "LinkedIn"} ${tone} draft:`);
+  console.log(draft.text);
+  console.log(`
+Characters: ${draft.characterCount}`);
 }
 async function leaderboard() {
   const state = await readState();
@@ -15339,32 +15594,40 @@ async function authLogin(flags) {
     deviceLabel
   });
   await updateState((current) => ({ ...current, pendingDeviceCode: response.deviceCode }));
-  console.log(`Open ${response.verificationUri}`);
-  console.log(`Enter code: ${response.userCode}`);
-  console.log(`Then run: rage auth complete --device-code ${response.deviceCode}`);
+  if (openBrowserUrl(response.verificationUri)) {
+    console.log(`Opened ${response.verificationUri}`);
+  } else {
+    console.log(`Open ${response.verificationUri}`);
+  }
+  console.log(`Device code: ${response.userCode}`);
+  console.log("Waiting for browser approval...");
+  const expiresAt = new Date(response.expiresAt).getTime();
+  while (Date.now() < expiresAt) {
+    try {
+      const completed = await completeDeviceAuth(state.apiUrl, state.installId, response.deviceCode);
+      if (completed.token) {
+        await storeAuthToken(completed);
+        return;
+      }
+    } catch {
+    }
+    await sleep(2e3);
+  }
+  console.log("Device approval timed out. Run `rage auth login` again to restart.");
 }
 async function authComplete(flags) {
   const state = await readState();
-  const deviceCode = flagString(flags, "device-code");
+  const deviceCode = flagString(flags, "device-code") ?? state.pendingDeviceCode;
   if (!deviceCode) {
-    console.log("Pass `--device-code` from `rage auth login`.");
+    console.log("No pending device code. Run `rage auth login` first.");
     return;
   }
-  const response = await postJson(
-    `${state.apiUrl}/api/auth/device/complete`,
-    { deviceCode, installId: state.installId }
-  );
-  await updateState((current) => {
-    const next = {
-      ...current,
-      publishToken: response.token
-    };
-    if (response.handle) {
-      return { ...next, handle: response.handle };
-    }
-    return next;
-  });
-  console.log("Publish token stored locally.");
+  const response = await completeDeviceAuth(state.apiUrl, state.installId, deviceCode);
+  if (!response.token) {
+    console.log(response.message ?? "Device is still waiting for browser approval.");
+    return;
+  }
+  await storeAuthToken(response);
 }
 async function authLogout() {
   await updateState((current) => {
@@ -15380,6 +15643,7 @@ Commands:
   rage scan [--confirm]
   rage stats
   rage publish --handle name [--host claude|codex] [--confirm]
+  rage share [--platform x|linkedin] [--tone professional|snark] [--window daily|weekly|all_time]
   rage leaderboard
   rage auth login [--label "Claude on my Mac"]
   rage auth complete --device-code code
@@ -15403,6 +15667,10 @@ async function main() {
   }
   if (command === "publish") {
     await publish(args.flags);
+    return;
+  }
+  if (command === "share") {
+    await share(args.flags);
     return;
   }
   if (command === "leaderboard") {
