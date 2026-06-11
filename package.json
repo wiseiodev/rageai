@@ -1,0 +1,35 @@
+{
+  "name": "rageai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "checks": "turbo run check lint typecheck test build",
+    "check": "turbo run check",
+    "lint": "turbo run lint",
+    "format": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "plugin:build": "turbo run plugin:build",
+    "db:generate": "pnpm --filter @rageai/db generate",
+    "db:migrate": "pnpm --filter @rageai/db migrate",
+    "guardrails:plan": "pnpm dlx @wiseiodev/guardrails@latest plan --json",
+    "guardrails:doctor": "pnpm dlx @wiseiodev/guardrails@latest doctor --json"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@playwright/test": "1.60.0",
+    "@types/node": "25.9.3",
+    "turbo": "2.9.18",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
+  }
+}

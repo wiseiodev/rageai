@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "rageai",
+  "description": "Rage AI plugins for local-first Claude Code and Codex frustration stats.",
+  "owner": {
+    "name": "wiseiodev",
+    "url": "https://rageai.dev"
+  },
+  "plugins": [
+    {
+      "name": "rage",
+      "description": "Scan local Claude Code chats for private rage stats and publish aggregate scores only after opt-in.",
+      "author": {
+        "name": "wiseiodev"
+      },
+      "category": "productivity",
+      "source": "./plugins/rage-claude",
+      "homepage": "https://rageai.dev"
+    }
+  ]
+}

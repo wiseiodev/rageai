@@ -1,0 +1,14 @@
+{
+  "name": "rage",
+  "version": "0.1.0",
+  "description": "Local-first frustration stats for Claude Code chats with opt-in aggregate publishing.",
+  "author": {
+    "name": "wiseiodev",
+    "url": "https://rageai.dev"
+  },
+  "homepage": "https://rageai.dev",
+  "repository": "https://github.com/wiseiodev/rageai/tree/main/plugins/rage-claude",
+  "license": "MIT",
+  "keywords": ["rage", "leaderboard", "analytics", "privacy"],
+  "commands": "./commands"
+}

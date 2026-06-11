@@ -1,0 +1,3 @@
+{"timestamp":"2026-06-11T13:00:00.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Dang it, this damn parser should count Codex too."}]}}
+{"timestamp":"2026-06-11T13:00:01.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"I will inspect the parser."}]}}
+{"timestamp":"2026-06-11T13:00:02.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_123","output":"ignored tool output"}}

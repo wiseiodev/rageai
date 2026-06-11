@@ -1,0 +1,25 @@
+{
+  "publicPayload": {
+    "handle": "wise",
+    "hostApp": "codex",
+    "pluginVersion": "0.1.0",
+    "rulesetVersion": "2026.06.11-en-v1",
+    "generatedAt": "2026-06-11T12:00:00.000Z",
+    "windows": [
+      {
+        "window": "daily",
+        "windowStart": "2026-06-11T00:00:00.000Z",
+        "windowEnd": "2026-06-12T00:00:00.000Z",
+        "userMessageCount": 14,
+        "userWordCount": 520,
+        "scoredProfanityCount": 6,
+        "ratePerThousandWords": 11.54,
+        "topIntensity": "strong",
+        "rankEligible": true
+      }
+    ]
+  },
+  "privateAntiAbuse": {
+    "installId": "018f8f13-7d2f-7abc-8df6-cadfe7fdb000"
+  }
+}

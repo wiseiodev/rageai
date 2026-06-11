@@ -1,0 +1,26 @@
+{
+  "name": "@rageai/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "rage": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "pnpm run typecheck && pnpm run bundle",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.js --banner:js='#!/usr/bin/env node' && chmod +x dist/index.js",
+    "plugin:build": "pnpm run build && node src/copy-plugin-artifacts.mjs",
+    "check": "biome check .",
+    "lint": "biome lint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"console.log('No cli unit tests yet')\""
+  },
+  "dependencies": {
+    "@rageai/core": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "4.1.8"
+  }
+}

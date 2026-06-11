@@ -1,0 +1,31 @@
+{
+  "name": "rage",
+  "version": "0.1.0",
+  "description": "Local-first frustration stats for Codex and Claude chats with opt-in aggregate publishing.",
+  "author": {
+    "name": "wiseiodev",
+    "url": "https://rageai.dev"
+  },
+  "homepage": "https://rageai.dev",
+  "repository": "https://github.com/wiseiodev/rageai",
+  "license": "MIT",
+  "keywords": ["rage", "leaderboard", "analytics", "privacy"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Rage",
+    "shortDescription": "Local frustration stats with opt-in leaderboards",
+    "longDescription": "Scan local Claude and Codex transcripts for private profanity stats, then publish aggregate Rage AI leaderboard scores only after preview and explicit confirmation.",
+    "developerName": "wiseiodev",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "websiteURL": "https://rageai.dev",
+    "privacyPolicyURL": "https://rageai.dev/privacy",
+    "termsOfServiceURL": "https://rageai.dev/terms",
+    "defaultPrompt": [
+      "Use Rage to show my local stats.",
+      "Use Rage to preview a publish payload.",
+      "Use Rage to show the leaderboard."
+    ],
+    "brandColor": "#18181B"
+  }
+}

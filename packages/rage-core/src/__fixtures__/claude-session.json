@@ -1,0 +1,12 @@
+[
+  {
+    "type": "user",
+    "timestamp": "2026-06-11T12:10:00.000Z",
+    "message": "what the shiiiit, why did this break"
+  },
+  {
+    "type": "assistant",
+    "timestamp": "2026-06-11T12:10:02.000Z",
+    "message": "Let's inspect the failing path."
+  }
+]
