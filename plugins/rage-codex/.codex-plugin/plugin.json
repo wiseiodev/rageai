@@ -24,7 +24,8 @@
     "defaultPrompt": [
       "Use Rage to show my local stats.",
       "Use Rage to preview a publish payload.",
-      "Use Rage to show the leaderboard."
+      "Use Rage to show the leaderboard.",
+      "Use Rage to draft a share post."
     ],
     "brandColor": "#18181B"
   }

@@ -1,5 +1,9 @@
+import { spawn } from 'node:child_process'
+import { platform } from 'node:os'
+import { setTimeout as sleep } from 'node:timers/promises'
 import {
   aggregatePublishableWindows,
+  createShareDraft,
   discoverTranscriptLocations,
   type HostApp,
   type HostScanSummary,
@@ -9,7 +13,11 @@ import {
   publishRequestSchema,
   RULESET_VERSION,
   type ScanSummary,
+  type SharePlatform,
+  type ShareScore,
+  type ShareTone,
   type TranscriptMessage,
+  type WindowKind,
 } from '@rageai/core'
 import { postJson, publishPayload } from './api.js'
 import { findTranscriptFiles } from './files.js'
@@ -41,6 +49,14 @@ const SCAN_FRAMES = ['-', '\\', '|', '/']
 type Args = {
   command: string[]
   flags: Map<string, string | boolean>
+}
+
+type DeviceCompleteResponse = {
+  token?: string
+  handle?: string
+  ok?: boolean
+  message?: string
+  status?: string
 }
 
 type ScanProgressState = {
@@ -81,6 +97,87 @@ function parseArgs(argv: string[]): Args {
 function flagString(flags: Map<string, string | boolean>, key: string): string | null {
   const value = flags.get(key)
   return typeof value === 'string' ? value : null
+}
+
+function flagWindow(flags: Map<string, string | boolean>): WindowKind {
+  const window = flagString(flags, 'window')
+  if (window === 'weekly' || window === 'all_time' || window === 'daily') {
+    return window
+  }
+  return 'daily'
+}
+
+function flagPlatform(flags: Map<string, string | boolean>): SharePlatform {
+  return flagString(flags, 'platform') === 'linkedin' ? 'linkedin' : 'x'
+}
+
+function flagTone(flags: Map<string, string | boolean>): ShareTone {
+  return flagString(flags, 'tone') === 'snark' ? 'snark' : 'professional'
+}
+
+function openBrowserUrl(url: string): boolean {
+  const currentPlatform = platform()
+  const command =
+    currentPlatform === 'darwin' ? 'open' : currentPlatform === 'win32' ? 'cmd' : 'xdg-open'
+  const args = currentPlatform === 'win32' ? ['/c', 'start', '', url] : [url]
+
+  try {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: 'ignore',
+    })
+    child.unref()
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function completeDeviceAuth(
+  apiUrl: string,
+  installId: string,
+  deviceCode: string,
+): Promise<DeviceCompleteResponse> {
+  const response = await fetch(`${apiUrl}/api/auth/device/complete`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ deviceCode, installId }),
+  })
+  const data = (await response.json().catch(() => ({}))) as DeviceCompleteResponse
+
+  if (response.status === 202) {
+    return data
+  }
+  if (!response.ok) {
+    throw new Error(data.message ?? `Device auth failed with ${response.status}`)
+  }
+  if (!data.token) {
+    throw new Error('Device auth completed without a publish token')
+  }
+
+  return data
+}
+
+async function storeAuthToken(response: DeviceCompleteResponse): Promise<void> {
+  if (!response.token) {
+    throw new Error('Device auth completed without a publish token')
+  }
+  const token = response.token
+
+  await updateState((current) => {
+    const { pendingDeviceCode: _pendingDeviceCode, ...rest } = current
+    const next = {
+      ...rest,
+      publishToken: token,
+    }
+    if (response.handle) {
+      return { ...next, handle: response.handle }
+    }
+    return next
+  })
+  console.log('Publish token stored locally.')
 }
 
 function formatHostApp(hostApp: HostApp): string {
@@ -419,7 +516,79 @@ async function publish(flags: Map<string, string | boolean>): Promise<void> {
   if (response.leaderboardUrl) {
     console.log(response.leaderboardUrl)
   }
-  await updateState((current) => ({ ...current, handle }))
+  if (response.shareUrls && response.shareUrls.length > 0) {
+    console.log('Share drafts:')
+    for (const shareUrl of response.shareUrls) {
+      console.log(`rage share --window ${shareUrl.window} --platform x`)
+      console.log(shareUrl.url)
+    }
+  }
+  await updateState((current) => {
+    const next = { ...current, handle }
+    if (response.shareUrls) {
+      return { ...next, shareUrls: response.shareUrls }
+    }
+    return next
+  })
+}
+
+function scoresForShare(summary: ScanSummary, window: WindowKind): ShareScore[] {
+  return (summary.hosts ?? []).flatMap((hostSummary) => {
+    const score = hostSummary.windows.find((candidate) => candidate.window === window)
+    if (!score) {
+      return []
+    }
+    return [
+      {
+        hostApp: hostSummary.hostApp,
+        ratePerThousandWords: score.ratePerThousandWords,
+        userWordCount: score.userWordCount,
+        scoredProfanityCount: score.scoredProfanityCount,
+        topIntensity: score.topIntensity,
+        rankEligible: score.rankEligible,
+      },
+    ]
+  })
+}
+
+async function share(flags: Map<string, string | boolean>): Promise<void> {
+  const state = await readState()
+  const window = flagWindow(flags)
+  const platform = flagPlatform(flags)
+  const tone = flagTone(flags)
+
+  if (!state.lastSummary) {
+    console.log('No local stats yet. Run `rage scan --confirm` first.')
+    return
+  }
+  if (!state.handle) {
+    console.log('No public handle yet. Run `rage publish --handle your_handle --confirm` first.')
+    return
+  }
+
+  const scores = scoresForShare(state.lastSummary, window)
+  if (scores.length === 0) {
+    console.log(`No ${window} host scores found. Run \`rage scan --confirm\` first.`)
+    return
+  }
+
+  const url = state.shareUrls?.find((shareUrl) => shareUrl.window === window)?.url
+  if (!url) {
+    console.log('No score-specific share URL found yet. Using the public leaderboard URL.')
+  }
+
+  const draft = createShareDraft({
+    handle: state.handle,
+    platform,
+    tone,
+    window,
+    url: url ?? `${state.apiUrl}/leaderboard`,
+    scores,
+  })
+
+  console.log(`${platform === 'x' ? 'X' : 'LinkedIn'} ${tone} draft:`)
+  console.log(draft.text)
+  console.log(`\nCharacters: ${draft.characterCount}`)
 }
 
 async function leaderboard(): Promise<void> {
@@ -457,34 +626,41 @@ async function authLogin(flags: Map<string, string | boolean>): Promise<void> {
   })
 
   await updateState((current) => ({ ...current, pendingDeviceCode: response.deviceCode }))
-  console.log(`Open ${response.verificationUri}`)
-  console.log(`Enter code: ${response.userCode}`)
-  console.log(`Then run: rage auth complete --device-code ${response.deviceCode}`)
+  if (openBrowserUrl(response.verificationUri)) {
+    console.log(`Opened ${response.verificationUri}`)
+  } else {
+    console.log(`Open ${response.verificationUri}`)
+  }
+  console.log(`Device code: ${response.userCode}`)
+  console.log('Waiting for browser approval...')
+
+  const expiresAt = new Date(response.expiresAt).getTime()
+  while (Date.now() < expiresAt) {
+    const completed = await completeDeviceAuth(state.apiUrl, state.installId, response.deviceCode)
+    if (completed.token) {
+      await storeAuthToken(completed)
+      return
+    }
+    await sleep(2000)
+  }
+
+  console.log('Device approval timed out. Run `rage auth login` again to restart.')
 }
 
 async function authComplete(flags: Map<string, string | boolean>): Promise<void> {
   const state = await readState()
-  const deviceCode = flagString(flags, 'device-code')
+  const deviceCode = flagString(flags, 'device-code') ?? state.pendingDeviceCode
   if (!deviceCode) {
-    console.log('Pass `--device-code` from `rage auth login`.')
+    console.log('No pending device code. Run `rage auth login` first.')
     return
   }
 
-  const response = await postJson<{ token: string; handle?: string }>(
-    `${state.apiUrl}/api/auth/device/complete`,
-    { deviceCode, installId: state.installId },
-  )
-  await updateState((current) => {
-    const next = {
-      ...current,
-      publishToken: response.token,
-    }
-    if (response.handle) {
-      return { ...next, handle: response.handle }
-    }
-    return next
-  })
-  console.log('Publish token stored locally.')
+  const response = await completeDeviceAuth(state.apiUrl, state.installId, deviceCode)
+  if (!response.token) {
+    console.log(response.message ?? 'Device is still waiting for browser approval.')
+    return
+  }
+  await storeAuthToken(response)
 }
 
 async function authLogout(): Promise<void> {
@@ -502,6 +678,7 @@ Commands:
   rage scan [--confirm]
   rage stats
   rage publish --handle name [--host claude|codex] [--confirm]
+  rage share [--platform x|linkedin] [--tone professional|snark] [--window daily|weekly|all_time]
   rage leaderboard
   rage auth login [--label "Claude on my Mac"]
   rage auth complete --device-code code
@@ -528,6 +705,10 @@ async function main(): Promise<void> {
   }
   if (command === 'publish') {
     await publish(args.flags)
+    return
+  }
+  if (command === 'share') {
+    await share(args.flags)
     return
   }
   if (command === 'leaderboard') {

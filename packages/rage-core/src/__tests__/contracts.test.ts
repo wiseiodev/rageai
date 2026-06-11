@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { publishBatchRequestSchema, publishRequestSchema } from '../contracts.js'
+import {
+  publishBatchRequestSchema,
+  publishRequestSchema,
+  publishResponseSchema,
+} from '../contracts.js'
 import { RULESET_VERSION } from '../types.js'
 
 describe('publish contract', () => {
@@ -49,5 +53,22 @@ describe('publish contract', () => {
     })
 
     expect(parsed.publicPayloads.map((payload) => payload.hostApp)).toEqual(['claude', 'codex'])
+  })
+
+  it('accepts optional public share URLs in publish responses', () => {
+    const parsed = publishResponseSchema.parse({
+      ok: true,
+      message: 'Rage scores published.',
+      leaderboardUrl: 'https://rageai.dev/leaderboard',
+      published: ['claude', 'codex'],
+      shareUrls: [
+        {
+          window: 'daily',
+          url: 'https://rageai.dev/share/score_123',
+        },
+      ],
+    })
+
+    expect(parsed.shareUrls?.[0]?.window).toBe('daily')
   })
 })

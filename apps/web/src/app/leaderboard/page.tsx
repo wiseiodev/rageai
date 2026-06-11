@@ -1,3 +1,5 @@
+import type { Route } from 'next'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Table, Td, Th } from '@/components/ui/table'
 import { getLeaderboardRows } from '@/lib/leaderboard'
@@ -38,6 +40,7 @@ export default async function LeaderboardPage() {
                       <Th className="text-right">Swears</Th>
                       <Th className="text-right">Words</Th>
                       <Th>Top</Th>
+                      <Th className="text-right">Share</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -50,6 +53,14 @@ export default async function LeaderboardPage() {
                         <Td className="text-right">{row.scoredProfanityCount}</Td>
                         <Td className="text-right">{row.userWordCount}</Td>
                         <Td>{row.topIntensity ?? '-'}</Td>
+                        <Td className="text-right">
+                          <Link
+                            className="text-zinc-600 underline"
+                            href={`/share/${row.id}` as Route}
+                          >
+                            Open
+                          </Link>
+                        </Td>
                       </tr>
                     ))}
                   </tbody>
