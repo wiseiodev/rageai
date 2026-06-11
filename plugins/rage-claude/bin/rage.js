@@ -15603,10 +15603,13 @@ async function authLogin(flags) {
   console.log("Waiting for browser approval...");
   const expiresAt = new Date(response.expiresAt).getTime();
   while (Date.now() < expiresAt) {
-    const completed = await completeDeviceAuth(state.apiUrl, state.installId, response.deviceCode);
-    if (completed.token) {
-      await storeAuthToken(completed);
-      return;
+    try {
+      const completed = await completeDeviceAuth(state.apiUrl, state.installId, response.deviceCode);
+      if (completed.token) {
+        await storeAuthToken(completed);
+        return;
+      }
+    } catch {
     }
     await sleep(2e3);
   }

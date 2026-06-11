@@ -636,10 +636,15 @@ async function authLogin(flags: Map<string, string | boolean>): Promise<void> {
 
   const expiresAt = new Date(response.expiresAt).getTime()
   while (Date.now() < expiresAt) {
-    const completed = await completeDeviceAuth(state.apiUrl, state.installId, response.deviceCode)
-    if (completed.token) {
-      await storeAuthToken(completed)
-      return
+    try {
+      const completed = await completeDeviceAuth(state.apiUrl, state.installId, response.deviceCode)
+      if (completed.token) {
+        await storeAuthToken(completed)
+        return
+      }
+    } catch {
+      // Transient errors (network blips, or a 404 once the request expires server-side)
+      // should not abort login; keep polling until the local expiry elapses.
     }
     await sleep(2000)
   }
