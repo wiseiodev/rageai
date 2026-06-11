@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { SignInWithGitHub } from '@/components/sign-in-with-github'
 import { getAuth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -47,12 +48,7 @@ export default async function DevicePage({
       ) : (
         <div className="grid gap-3">
           <p className="text-zinc-600">Sign in with GitHub before approving a device.</p>
-          <a
-            className="rounded-md bg-zinc-950 px-3 py-2 text-center font-medium text-sm text-white"
-            href="/api/auth/sign-in/github"
-          >
-            Sign in with GitHub
-          </a>
+          <SignInWithGitHub />
         </div>
       )}
     </article>
