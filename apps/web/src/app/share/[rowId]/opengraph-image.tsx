@@ -96,7 +96,7 @@ export default async function Image({ params }: ShareImageProps) {
           Rage AI
         </div>
         <div style={{ color: '#52525b', fontSize: 28 }}>
-          {formatWindow(data.window)} aggregate share
+          {`${formatWindow(data.window)} aggregate share`}
         </div>
       </div>
 

@@ -30,41 +30,43 @@ export default async function LeaderboardPage() {
             </CardHeader>
             <CardContent>
               {group.rows.length > 0 ? (
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>#</Th>
-                      <Th>Handle</Th>
-                      <Th>Host</Th>
-                      <Th className="text-right">Rage/1k</Th>
-                      <Th className="text-right">Swears</Th>
-                      <Th className="text-right">Words</Th>
-                      <Th>Top</Th>
-                      <Th className="text-right">Share</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.rows.map((row) => (
-                      <tr key={row.id}>
-                        <Td>{row.rank}</Td>
-                        <Td className="font-medium">{row.handle}</Td>
-                        <Td>{row.hostApp}</Td>
-                        <Td className="text-right">{row.ratePerThousandWords}</Td>
-                        <Td className="text-right">{row.scoredProfanityCount}</Td>
-                        <Td className="text-right">{row.userWordCount}</Td>
-                        <Td>{row.topIntensity ?? '-'}</Td>
-                        <Td className="text-right">
-                          <Link
-                            className="text-zinc-600 underline"
-                            href={`/share/${row.id}` as Route}
-                          >
-                            Open
-                          </Link>
-                        </Td>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[680px]">
+                    <thead>
+                      <tr>
+                        <Th>#</Th>
+                        <Th>Handle</Th>
+                        <Th>Host</Th>
+                        <Th className="text-right">Rage/1k</Th>
+                        <Th className="text-right">Swears</Th>
+                        <Th className="text-right">Words</Th>
+                        <Th>Top</Th>
+                        <Th className="text-right">Share</Th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((row) => (
+                        <tr key={row.id}>
+                          <Td>{row.rank}</Td>
+                          <Td className="font-medium">{row.handle}</Td>
+                          <Td>{row.hostApp}</Td>
+                          <Td className="text-right">{row.ratePerThousandWords}</Td>
+                          <Td className="text-right">{row.scoredProfanityCount}</Td>
+                          <Td className="text-right">{row.userWordCount}</Td>
+                          <Td>{row.topIntensity ?? '-'}</Td>
+                          <Td className="text-right">
+                            <Link
+                              className="text-zinc-600 underline"
+                              href={`/share/${row.id}` as Route}
+                            >
+                              Open
+                            </Link>
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <p className="text-sm text-zinc-500">No rankable rows yet.</p>
               )}

@@ -85,6 +85,20 @@ describe('share drafts', () => {
     expect(draft.text).toContain('aggregate-only')
   })
 
+  it('does not duplicate aggregate-only wording for non-rankable scores', () => {
+    const draft = createShareDraft({
+      handle: 'wise',
+      platform: 'linkedin',
+      tone: 'professional',
+      window: 'daily',
+      url: shareUrl,
+      scores: [{ ...(scores[0] as ShareScore), rankEligible: false }],
+    })
+
+    expect(draft.text).toContain('This is an aggregate-only share.')
+    expect(draft.text).not.toContain('aggregate-only, aggregate-only')
+  })
+
   it('does not include private or sensitive field names', () => {
     const draft = createShareDraft({
       handle: 'wise',
