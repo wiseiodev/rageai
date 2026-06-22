@@ -7,6 +7,10 @@ import { getLeaderboardRows } from '@/lib/leaderboard'
 
 export const dynamic = 'force-dynamic'
 
+function formatHostApp(hostApp: string): string {
+  return hostApp === 'claude' ? 'Claude' : 'Codex'
+}
+
 export default async function HomePage() {
   const rows = await getLeaderboardRows('daily').catch(() => [])
   const topHost = rows[0]?.hostApp
@@ -41,37 +45,39 @@ export default async function HomePage() {
           </CardHeader>
           <CardContent>
             {rows.length > 0 ? (
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>#</Th>
-                    <Th>Handle</Th>
-                    <Th>Host</Th>
-                    <Th className="text-right">Rage/1k</Th>
-                    <Th className="text-right">Words</Th>
-                    <Th className="text-right">Share</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id}>
-                      <Td>{row.rank}</Td>
-                      <Td className="font-medium">{row.handle}</Td>
-                      <Td>{row.hostApp}</Td>
-                      <Td className="text-right">{row.ratePerThousandWords}</Td>
-                      <Td className="text-right">{row.userWordCount}</Td>
-                      <Td className="text-right">
-                        <Link
-                          className="text-zinc-600 underline"
-                          href={`/share/${row.id}` as Route}
-                        >
-                          Open
-                        </Link>
-                      </Td>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[520px]">
+                  <thead>
+                    <tr>
+                      <Th>#</Th>
+                      <Th>Handle</Th>
+                      <Th>Host</Th>
+                      <Th className="text-right">Rage/1k</Th>
+                      <Th className="text-right">Words</Th>
+                      <Th className="text-right">Share</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.id}>
+                        <Td>{row.rank}</Td>
+                        <Td className="font-medium">{row.handle}</Td>
+                        <Td>{row.hostApp}</Td>
+                        <Td className="text-right">{row.ratePerThousandWords}</Td>
+                        <Td className="text-right">{row.userWordCount}</Td>
+                        <Td className="text-right">
+                          <Link
+                            className="text-zinc-600 underline"
+                            href={`/share/${row.id}` as Route}
+                          >
+                            Open
+                          </Link>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
             ) : (
               <div className="rounded-md border border-dashed p-8 text-center text-zinc-500">
                 No published rage yet. Suspiciously calm.
@@ -88,7 +94,7 @@ export default async function HomePage() {
             <CardContent className="grid gap-2 text-sm text-zinc-600">
               <p>
                 {topHost
-                  ? `${topHost} is testing everyone&apos;s patience today.`
+                  ? `${formatHostApp(topHost)} is testing everyone's patience today.`
                   : 'The tools are behaving, or everyone is bottling it up.'}
               </p>
               <p>

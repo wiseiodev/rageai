@@ -14829,6 +14829,15 @@ function bestScore(scores) {
 function formatScore(score) {
   return `${formatHostApp(score.hostApp)} ${formatRate(score.ratePerThousandWords)}/1k`;
 }
+function scoreBoundary(score) {
+  return score.rankEligible ? "rankable, aggregate-only" : "aggregate-only";
+}
+function scoreBoundaryStart(score) {
+  return score.rankEligible ? "Rankable, aggregate-only" : "Aggregate-only";
+}
+function shareBoundarySentence(score) {
+  return score.rankEligible ? "This is a rankable, aggregate-only share." : "This is an aggregate-only share.";
+}
 function comparisonLine(scores) {
   return scores.map(formatScore).join(" vs ");
 }
@@ -14859,23 +14868,23 @@ function createSingleHostDraft(input, score) {
   const window = formatWindow(input.window);
   const host = formatHostApp(score.hostApp);
   const rate = formatRate(score.ratePerThousandWords);
-  const rankable = score.rankEligible ? "rankable" : "aggregate-only";
+  const boundary = scoreBoundary(score);
   if (input.platform === "x") {
     if (input.tone === "snark") {
-      return `${host} extracted ${rate} rage hits/1k words from me ${window}. ${rankable} Rage AI score, transcripts stay local. ${input.url}`;
+      return `${host} extracted ${rate} rage hits/1k words from my ${window} window. ${scoreBoundaryStart(score)} Rage AI score, transcripts stay local. ${input.url}`;
     }
-    return `${window} Rage AI score for ${host}: ${rate} rage hits/1k words. ${rankable}, aggregate-only, transcripts stay local. ${input.url}`;
+    return `${window} Rage AI score for ${host}: ${rate} rage hits/1k words. ${boundary}, transcripts stay local. ${input.url}`;
   }
   if (input.tone === "snark") {
     return `${host} delivered my ${window} Rage AI score: ${rate} rage hits per 1,000 words.
 
-The share is ${rankable} and aggregate-only. No raw transcripts, no matched words, no model names.
+The share is ${boundary}. No raw transcripts, no matched words, no model names.
 
 ${input.url}`;
   }
   return `My ${window} Rage AI score for ${host} is ${rate} rage hits per 1,000 words.
 
-This is a ${rankable}, aggregate-only share. No raw transcripts, no matched words, no model names.
+${shareBoundarySentence(score)} No raw transcripts, no matched words, no model names.
 
 ${input.url}`;
 }
